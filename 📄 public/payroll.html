@@ -5,37 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bảng lương nhân viên - CSKH</title>
   <style>
-    body { font-family: system-ui, Roboto, Arial; margin:20px; background:#f9fafb; color:#111827; }
-    h1 { color:#b91c1c; }
+    :root{ --bg:#f9fafb; --fg:#111827; --muted:#6b7280; --red:#ef4444; --red2:#dc2626; --br:#e5e7eb; }
+    body { font-family: system-ui, Roboto, Arial; margin:20px; background:var(--bg); color:var(--fg); }
+    h1 { color:#b91c1c; margin:0 0 12px }
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+    input,button{padding:8px;border-radius:8px;border:1px solid #d1d5db}
+    input[type="datetime-local"]{background:white}
+    button{background:var(--red);color:white;cursor:pointer}
+    button:hover{background:var(--red2)}
+    .msg{margin:8px 0;color:#b91c1c;min-height:18px}
     table { border-collapse: collapse; width: 100%; background:white; border-radius:10px; overflow:hidden; }
-    th, td { border:1px solid #e5e7eb; padding:10px; text-align:left; }
+    th, td { border:1px solid var(--br); padding:10px; text-align:left; }
     th { background:#fee2e2; }
-    input,button{padding:8px;border-radius:8px;border:1px solid #d1d5db;}
-    button{background:#ef4444;color:white;cursor:pointer;}
-    button:hover{background:#dc2626;}
+    tfoot td{font-weight:700;background:#fff7f7}
+    .muted{color:var(--muted);font-size:13px}
   </style>
 </head>
 <body>
   <h1>Bảng lương nhân viên (VND)</h1>
-  <div><input id="token" placeholder="Bearer Token (admin)" style="width:70%"/><button id="loadBtn">Tải</button></div>
+
+  <div class="row">
+    <input id="token" placeholder="Bearer Token (admin)" style="flex:1;min-width:260px" />
+    <label class="muted">Từ:
+      <input id="from" type="datetime-local" />
+    </label>
+    <label class="muted">Đến:
+      <input id="to" type="datetime-local" />
+    </label>
+    <button id="loadBtn">Tải bảng lương</button>
+  </div>
+  <div id="msg" class="msg"></div>
+
   <table>
-    <thead><tr><th>Tên</th><th>Email</th><th>Giờ làm</th><th>Rate</th><th>Lương (VND)</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Tên</th><th>Email</th><th>Giờ làm (floor)</th><th>Rate (VND/h)</th><th>Lương (VND)</th>
+      </tr>
+    </thead>
     <tbody id="tbody"></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">Tổng</td>
+        <td id="sumHours">0</td>
+        <td></td>
+        <td id="sumPay">0 VND</td>
+      </tr>
+    </tfoot>
   </table>
-  <script>
-    const BASE_URL = "https://customer-service-mauka.onrender.com";
-    document.getElementById('loadBtn').onclick=async()=>{
-      const t=document.getElementById('token').value.trim();
-      if(!t){alert('Nhập token admin!');return;}
-      const res=await fetch(`${BASE_URL}/admin/payroll`,{headers:{Authorization:`Bearer ${t}`}});
-      const d=await res.json(); const tb=document.getElementById('tbody'); tb.innerHTML='';
-      (d.payroll||[]).forEach(u=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${u.display_name}</td><td>${u.email}</td><td>${u.hours}</td>
-        <td>${u.salary_per_hour.toLocaleString('vi-VN')} VND</td><td><b>${u.pay.toLocaleString('vi-VN')} VND</b></td>`;
-        tb.appendChild(tr);
+
+<script>
+  const BASE_URL = "https://customer-service-mauka.onrender.com";
+  const $ = (id)=>document.getElementById(id);
+  const fmt = (n)=> Number(n||0).toLocaleString('vi-VN');
+
+  // tiện: tự điền token nếu mở trang từ cùng domain sau khi login trong extension/webapp
+  (function autofillTokenFromHash(){
+    // hỗ trợ ?token=... hoặc #token=...
+    const p = new URLSearchParams(location.search || location.hash.replace('#','?'));
+    const tk = p.get('token');
+    if(tk) $('token').value = tk;
+  })();
+
+  $('loadBtn').addEventListener('click', loadPayroll);
+
+  async function loadPayroll(){
+    $('msg').textContent = '';
+    $('tbody').innerHTML = '';
+    $('sumHours').textContent = '0';
+    $('sumPay').textContent = '0 VND';
+
+    const token = $('token').value.trim();
+    if(!token){ $('msg').textContent = 'Vui lòng nhập Bearer token (admin).'; return; }
+
+    // query optional: from/to (ms)
+    const qs = new URLSearchParams();
+    const from = $('from').value ? new Date($('from').value).getTime() : null;
+    const to   = $('to').value   ? new Date($('to').value).getTime()   : null;
+    if(from) qs.set('from', String(from));
+    if(to)   qs.set('to',   String(to));
+
+    try{
+      const res = await fetch(`${BASE_URL}/api/admin/payroll?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-    };
-  </script>
+      if(!res.ok){
+        const t = await res.text();
+        $('msg').textContent = t || 'Tải dữ liệu thất bại.';
+        return;
+      }
+      const data = await res.json();
+      const tb = $('tbody');
+      let sumH = 0, sumP = 0;
+
+      (data.payroll || []).forEach(u=>{
+        const tr = document.createElement('tr');
+        const rate = Number(u.salary_per_hour||0);
+        const pay  = Number(u.pay||0);
+        tr.innerHTML = `
+          <td>${u.display_name||''}</td>
+          <td>${u.email||''}</td>
+          <td>${fmt(u.hours)}</td>
+          <td>${fmt(rate)} VND</td>
+          <td><b>${fmt(pay)} VND</b></td>
+        `;
+        tb.appendChild(tr);
+        sumH += Number(u.hours||0);
+        sumP += pay;
+      });
+
+      $('sumHours').textContent = fmt(sumH);
+      $('sumPay').textContent = `${fmt(sumP)} VND`;
+
+      if((data.payroll||[]).length === 0){
+        $('msg').textContent = 'Không có dữ liệu trong khoảng thời gian đã chọn.';
+      }
+    }catch(e){
+      $('msg').textContent = 'Có lỗi khi tải dữ liệu.';
+      console.error(e);
+    }
+  }
+</script>
 </body>
 </html>
