@@ -15,5 +15,6 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "sqlite3": "^5.1.7"
-  }
+  },
+  "engines": { "node": ">=18 <21" }
 }
