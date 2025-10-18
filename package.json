@@ -1,20 +1,19 @@
 {
-  "name": "cskh-time-backend",
-  "version": "1.2.0",
+  "name": "cskh-time-tracker-backend",
+  "version": "1.3.1",
+  "description": "CSKH Time Tracker Backend (VND Edition)",
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed": "node seed_from_csv.js \"Data CS (chuẩn hoá).csv\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.7",
-    "sqlite": "^5.1.6"
-  },
-  "engines": {
-    "node": ">=18"
+    "sqlite3": "^5.1.7"
   }
 }
