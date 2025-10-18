@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Đang trong ca làm việc - CSKH</title>
+  <style>
+    body { font-family: system-ui, Roboto, Arial; margin:20px; background:#f9fafb; color:#111827; }
+    h1 { color:#047857; }
+    table { border-collapse: collapse; width: 100%; background:white; border-radius:10px; overflow:hidden; }
+    th, td { border:1px solid #e5e7eb; padding:10px; text-align:left; }
+    th { background:#f3f4f6; }
+  </style>
+</head>
+<body>
+  <h1>Nhân viên đang trong ca làm việc</h1>
+  <p>Cập nhật tự động mỗi 10 giây</p>
+  <table>
+    <thead><tr><th>Tên hiển thị</th><th>Trạng thái</th><th>Bắt đầu</th><th>Hoạt động cuối</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <script>
+    const BASE_URL = "https://customer-service-mauka.onrender.com";
+    async function loadOnline(){
+      const res = await fetch(`${BASE_URL}/public/online`);
+      const data = await res.json();
+      const tb=document.getElementById('tbody'); tb.innerHTML='';
+      (data.online||[]).forEach(u=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${u.display_name||''}</td><td>${u.status}</td>
+        <td>${new Date(u.started_at).toLocaleString()}</td><td>${new Date(u.last_seen).toLocaleString()}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+    loadOnline(); setInterval(loadOnline,10000);
+  </script>
+</body>
+</html>
