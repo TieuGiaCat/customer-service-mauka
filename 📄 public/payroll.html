@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bảng lương nhân viên - CSKH</title>
+  <style>
+    body { font-family: system-ui, Roboto, Arial; margin:20px; background:#f9fafb; color:#111827; }
+    h1 { color:#b91c1c; }
+    table { border-collapse: collapse; width: 100%; background:white; border-radius:10px; overflow:hidden; }
+    th, td { border:1px solid #e5e7eb; padding:10px; text-align:left; }
+    th { background:#fee2e2; }
+    input,button{padding:8px;border-radius:8px;border:1px solid #d1d5db;}
+    button{background:#ef4444;color:white;cursor:pointer;}
+    button:hover{background:#dc2626;}
+  </style>
+</head>
+<body>
+  <h1>Bảng lương nhân viên (VND)</h1>
+  <div><input id="token" placeholder="Bearer Token (admin)" style="width:70%"/><button id="loadBtn">Tải</button></div>
+  <table>
+    <thead><tr><th>Tên</th><th>Email</th><th>Giờ làm</th><th>Rate</th><th>Lương (VND)</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <script>
+    const BASE_URL = "https://customer-service-mauka.onrender.com";
+    document.getElementById('loadBtn').onclick=async()=>{
+      const t=document.getElementById('token').value.trim();
+      if(!t){alert('Nhập token admin!');return;}
+      const res=await fetch(`${BASE_URL}/admin/payroll`,{headers:{Authorization:`Bearer ${t}`}});
+      const d=await res.json(); const tb=document.getElementById('tbody'); tb.innerHTML='';
+      (d.payroll||[]).forEach(u=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${u.display_name}</td><td>${u.email}</td><td>${u.hours}</td>
+        <td>${u.salary_per_hour.toLocaleString('vi-VN')} VND</td><td><b>${u.pay.toLocaleString('vi-VN')} VND</b></td>`;
+        tb.appendChild(tr);
+      });
+    };
+  </script>
+</body>
+</html>
