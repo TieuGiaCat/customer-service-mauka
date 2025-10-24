@@ -11,6 +11,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 const ORIGIN = process.env.CORS_ORIGIN || "*";
@@ -262,6 +264,10 @@ app.get("/api/admin/payroll", auth, requireRole(["admin"]), async (req, res) => 
 // ---------- Static HTML (KHÔNG yêu cầu token) ----------
 app.use("/public", express.static(path.join(__dirname, "public")));
 
+// Map /app -> public/app.html (và cho phép load các asset trong /public)
+app.use("/app", express.static(path.join(__dirname, "public"), { index: "app.html" }));
+
+
 app.get("/admin/online", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "online.html"))
 );
@@ -270,10 +276,6 @@ app.get("/admin/payroll", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "payroll.html"))
 );
 
-// (tuỳ chọn) Web app song song extension
-app.get("/app", (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "app.html"))
-);
 
 // ✅ NEW: route gốc (root) để khi mở domain chính không báo lỗi
 app.get("/", (_req, res) => {
