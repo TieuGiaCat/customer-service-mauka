@@ -261,16 +261,29 @@ app.get("/api/admin/payroll", auth, requireRole(["admin"]), async (req, res) => 
 
 // ---------- Static HTML (KHÔNG yêu cầu token) ----------
 app.use("/public", express.static(path.join(__dirname, "public")));
+
 app.get("/admin/online", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "online.html"))
 );
+
 app.get("/admin/payroll", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "payroll.html"))
 );
+
 // (tuỳ chọn) Web app song song extension
 app.get("/app", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "app.html"))
 );
 
+// ✅ NEW: route gốc (root) để khi mở domain chính không báo lỗi
+app.get("/", (_req, res) => {
+  // Cách 1: Redirect gọn gàng về /app
+  res.redirect("/app");
+
+  // Nếu muốn hiển thị trực tiếp thì dùng dòng dưới thay cho redirect:
+  // res.sendFile(path.join(__dirname, "public", "app.html"));
+});
+
 // ---------- Start ----------
 app.listen(PORT, () => console.log(`✅ CSKH Time API running on :${PORT}`));
+
