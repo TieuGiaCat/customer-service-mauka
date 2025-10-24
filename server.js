@@ -261,13 +261,13 @@ app.get("/api/admin/payroll", auth, requireRole(["admin"]), async (req, res) => 
 
 // ---------- Static HTML (KHÔNG yêu cầu token) ----------
 
-// Phục vụ toàn bộ file tĩnh trong /public
+// Phục vụ file tĩnh trong /public
 app.use("/public", express.static(path.join(__dirname, "public")));
 
-// ✅ Map /app → public/app.html (và cho phép tải asset trong /public)
+// Map /app -> public/app.html (và cho phép tải asset trong /public)
 app.use("/app", express.static(path.join(__dirname, "public"), { index: "app.html" }));
 
-// (nếu là SPA và cần fallback cho /app/*)
+// Fallback cho các route con dưới /app (nếu có)
 app.get("/app/*", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "app.html"))
 );
@@ -280,19 +280,21 @@ app.get("/admin/payroll", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "payroll.html"))
 );
 
-// ✅ Trang gốc → chuyển về /app
-app.get("/", (_req, res) => res.redirect("/app"));
+// ✅ Trang gốc trả trực tiếp app.html (200 OK cho health-check)
+app.get("/", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "app.html"))
+);
 
-// (TẠM THỜI) Route debug: xem Render có thấy folder public không
+// ✅ Endpoint health-check
+app.get("/healthz", (_req, res) => res.status(200).send("ok"));
+
+// (Tùy chọn) Route debug: xem Render có thấy folder public không
 app.get("/_debug/public", (_req, res) => {
   const p = path.join(__dirname, "public");
   fs.readdir(p, (err, files) => {
-    res.json({
-      cwd: __dirname,
-      publicPath: p,
-      exists: !err,
-      files: files || [],
-      error: err?.message || null
-    });
+    res.json({ cwd: __dirname, publicPath: p, exists: !err, files: files || [], error: err?.message || null });
   });
 });
+
+// ---------- Start ----------
+app.listen(PORT, () => console.log(`✅ CSKH Time API running on :${PORT}`));
