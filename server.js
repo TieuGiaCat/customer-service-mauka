@@ -260,30 +260,39 @@ app.get("/api/admin/payroll", auth, requireRole(["admin"]), async (req, res) => 
 });
 
 // ---------- Static HTML (KHÔNG yêu cầu token) ----------
+
+// Phục vụ toàn bộ file tĩnh trong /public
 app.use("/public", express.static(path.join(__dirname, "public")));
 
+// ✅ Map /app → public/app.html (và cho phép tải asset trong /public)
+app.use("/app", express.static(path.join(__dirname, "public"), { index: "app.html" }));
+
+// (nếu là SPA và cần fallback cho /app/*)
+app.get("/app/*", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "app.html"))
+);
+
+// Các trang admin
 app.get("/admin/online", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "online.html"))
 );
-
 app.get("/admin/payroll", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "payroll.html"))
 );
 
-// (tuỳ chọn) Web app song song extension
-app.get("/app", (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "app.html"))
-);
+// ✅ Trang gốc → chuyển về /app
+app.get("/", (_req, res) => res.redirect("/app"));
 
-// ✅ NEW: route gốc (root) để khi mở domain chính không báo lỗi
-app.get("/", (_req, res) => {
-  // Cách 1: Redirect gọn gàng về /app
-  res.redirect("/app");
-
-  // Nếu muốn hiển thị trực tiếp thì dùng dòng dưới thay cho redirect:
-  // res.sendFile(path.join(__dirname, "public", "app.html"));
+// (TẠM THỜI) Route debug: xem Render có thấy folder public không
+app.get("/_debug/public", (_req, res) => {
+  const p = path.join(__dirname, "public");
+  fs.readdir(p, (err, files) => {
+    res.json({
+      cwd: __dirname,
+      publicPath: p,
+      exists: !err,
+      files: files || [],
+      error: err?.message || null
+    });
+  });
 });
-
-// ---------- Start ----------
-app.listen(PORT, () => console.log(`✅ CSKH Time API running on :${PORT}`));
-
