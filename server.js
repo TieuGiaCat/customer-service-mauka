@@ -11,12 +11,15 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// __dirname cho ES Modules (KHAI BÁO MỘT LẦN)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 const ORIGIN = process.env.CORS_ORIGIN || "*";
 const DB_FILE = process.env.DATABASE_FILE || "./data.sqlite";
+
 
 // __dirname cho ES Modules
 const __filename = fileURLToPath(import.meta.url);
