@@ -129,7 +129,17 @@ async function heartbeat(){
     await api('/presence/beat','POST',{ status:s.status, startedAt:s.startedAt||null });
   }catch(e){}
 }
-setInterval(heartbeat, 30000);
+// chạy heartbeat khi có token
+setInterval(()=>{
+  const auth=getAuth();
+  if(auth?.token) heartbeat();
+},30000);
 
-setInterval(refresh, 15000);
+// load public liên tục (cho ai cũng thấy)
+setInterval(loadPublic,15000);
+
+// load toàn bộ (auth + public) khi trang load
 refresh();
+
+
+
