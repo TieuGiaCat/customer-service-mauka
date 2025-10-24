@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CSKH Time Tracker – Mauka Warriors Luau</title>
+  <link rel="stylesheet" href="/public/app.css"/>
+  <style>
+    body { background:#000; color:#fff; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; }
+    .wrap{ max-width:760px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+    header{ display:flex; align-items:center; gap:12px; background:#0b0b0b; border:1px solid #232323; border-radius:14px; padding:12px; }
+    header img{ width:60px; height:auto; }
+    header h1{ font-size:20px; margin:0; flex:1; }
+    section.card{ background:#0b0b0b; border:1px solid #232323; border-radius:14px; padding:12px; }
+    .row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .list{ display:grid; gap:8px; }
+    .item{ display:flex; justify-content:space-between; border:1px solid #232323; border-radius:8px; padding:8px; background:#0e0e0e; }
+    label{ display:grid; gap:4px; font-size:14px; margin:6px 0; }
+    input{ padding:10px; border-radius:10px; border:1px solid #232323; background:#0f172a; color:#fff; width:100%; }
+    .btn{ padding:10px 14px; border-radius:10px; border:1px solid #232323; font-weight:600; cursor:pointer; }
+    .btn-orange{ background:#f59e0b; color:#111827; }
+    .btn-orange:hover{ background:#fbbf24; }
+    .btn-red{ background:#ef4444; color:#fff; }
+    .btn-ghost{ background:#111827; color:#fff; }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .badge{ padding:4px 8px; border-radius:99px; background:#1f2937; color:#fff; font-size:12px; }
+    .small{ font-size:13px; color:#9ca3af; }
+    footer{ text-align:center; color:#9ca3af; font-size:12px; padding:12px 0; }
+    h2,h3{ margin:6px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/public/mauka-logo.png" alt="Mauka Warriors Luau"/>
+    <h1>CSKH Time Tracker</h1>
+    <nav>
+      <a href="/admin/online" target="_blank" style="color:#fbbf24;text-decoration:none;margin-right:8px;">Online</a>
+      <a href="/admin/payroll" target="_blank" style="color:#fbbf24;text-decoration:none;">Payroll</a>
+    </nav>
+  </header>
+
+  <!-- Ai đang làm việc -->
+  <section class="card" id="publicCard">
+    <div class="row">
+      <h2>Ai đang làm việc (công khai)</h2>
+      <small>Tự cập nhật mỗi 15 giây</small>
+    </div>
+    <div id="publicList" class="list"></div>
+  </section>
+
+  <!-- Đăng nhập -->
+  <section class="card" id="authCard">
+    <h2>Đăng nhập / Đăng ký</h2>
+    <label>Gmail <input id="email" type="email" placeholder="you@gmail.com"/></label>
+    <label>Mật khẩu <input id="password" type="password" placeholder="Tối thiểu 6 ký tự"/></label>
+    <label>Tên hiển thị <input id="displayName" type="text" placeholder="VD: Minh CSKH"/></label>
+    <div class="grid2">
+      <button id="loginBtn" class="btn btn-orange">Đăng nhập</button>
+      <button id="signupBtn" class="btn btn-ghost">Đăng ký</button>
+    </div>
+    <div id="authMsg" class="small" style="min-height:16px;color:#f87171"></div>
+  </section>
+
+  <!-- Giao diện sau khi đăng nhập -->
+  <section class="card" id="appCard" style="display:none">
+    <div class="row">
+      <div>
+        <div><span class="badge" id="status">Offline</span></div>
+        <div class="small">Xin chào <b id="displayNameTxt">Agent</b> • <span id="roleTxt">agent</span></div>
+        <div class="small">Email: <span id="emailTxt"></span></div>
+      </div>
+      <button id="logoutBtn" class="btn btn-ghost">Đăng xuất</button>
+    </div>
+
+    <div class="card" style="background:#0f0f0f;margin-top:10px;">
+      <div class="row"><h3>Thao tác</h3></div>
+      <div class="grid3" style="margin-top:8px;">
+        <button id="checkInBtn" class="btn btn-orange">Check-in</button>
+        <button id="breakBtn" class="btn btn-orange">Nghỉ</button>
+        <button id="checkOutBtn" class="btn btn-red">Check-out</button>
+      </div>
+    </div>
+
+    <div class="card" style="background:#0f0f0f;margin-top:10px;">
+      <h3>Tổng giờ hôm nay (làm tròn xuống)</h3>
+      <div style="font-size:32px;font-weight:800;margin-top:6px;">
+        <span id="todayHours">0</span>h
+      </div>
+    </div>
+  </section>
+
+  <footer>© Mauka Warriors Luau</footer>
+</div>
+
+<script type="module">
+const BASE_URL = location.origin;
+const $ = (s)=>document.querySelector(s);
+const AUTH_KEY='cskh_web_auth'; const STATE_KEY='cskh_web_state';
+
+const now=()=>Date.now();
+const emptyState=()=>({status:'offline',startedAt:null,breakStartedAt:null,accBreakMs:0});
+const statusLabel=(s)=>s==='working'?'Working':(s==='break'?'On Break':'Offline');
+function getAuth(){ try{return JSON.parse(localStorage.getItem(AUTH_KEY)||'null');}catch{return null;} }
+function setAuth(a){ localStorage.setItem(AUTH_KEY,JSON.stringify(a)); }
+function clearAuth(){ localStorage.removeItem(AUTH_KEY); }
+function getState(){ try{return JSON.parse(localStorage.getItem(STATE_KEY)||'null')||emptyState();}catch{return emptyState();} }
+function setState(s){ localStorage.setItem(STATE_KEY,JSON.stringify(s)); }
+
+async function api(path,method='GET',body){
+  const auth=getAuth();
+  const headers={'Content-Type':'application/json'};
+  if(auth?.token) headers['Authorization']='Bearer '+auth.token;
+  const r=await fetch(BASE_URL+path,{method,headers,body:body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error(await r.text());
+  return await r.json();
+}
+
+// Hiển thị danh sách công khai
+async function loadPublic(){
+  try{
+    const res=await fetch(BASE_URL+'/public/online');
+    const data=await res.json();
+    const list=$('#publicList'); list.innerHTML='';
+    (data.online||[]).forEach(u=>{
+      const el=document.createElement('div');
+      el.className='item';
+      el.innerHTML=`<div><b>${u.display_name||''}</b><div class="small">${u.status}</div></div>
+                    <div class="small">${u.started_at?new Date(u.started_at).toLocaleString('vi-VN'):''}</div>`;
+      list.appendChild(el);
+    });
+  }catch(e){console.error(e);}
+}
+
+// Hiển thị đúng view
+function showLoggedIn(on){
+  $('#authCard').style.display=on?'none':'block';
+  $('#appCard').style.display=on?'block':'none';
+}
+
+// Tải thông tin + giờ làm
+async function refresh(){
+  await loadPublic();
+  const auth=getAuth();
+  showLoggedIn(!!auth?.token);
+  if(!auth?.token) return;
+  $('#displayNameTxt').textContent=auth.profile?.display_name||'Agent';
+  $('#roleTxt').textContent=auth.profile?.role||'agent';
+  $('#emailTxt').textContent=auth.profile?.email||'';
+  const s=getState();
+  $('#status').textContent=statusLabel(s.status);
+  try{
+    const t=await api('/attendance/today','GET');
+    $('#todayHours').textContent=String(Math.floor((t.workMs||0)/3600000));
+  }catch(e){}
+}
+
+// Các thao tác
+$('#loginBtn').onclick=async()=>{
+  $('#authMsg').textContent='';
+  const email=$('#email').value.trim();
+  const password=$('#password').value.trim();
+  try{
+    const r=await fetch(BASE_URL+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+    if(!r.ok){ $('#authMsg').textContent=await r.text(); return; }
+    const data=await r.json(); setAuth(data); refresh();
+  }catch(e){ $('#authMsg').textContent='Đăng nhập thất bại'; }
+};
+$('#signupBtn').onclick=async()=>{
+  $('#authMsg').textContent='';
+  const email=$('#email').value.trim();
+  const password=$('#password').value.trim();
+  const display_name=$('#displayName').value.trim();
+  if(password.length<6){ $('#authMsg').textContent='Mật khẩu tối thiểu 6 ký tự'; return; }
+  try{
+    const r=await fetch(BASE_URL+'/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,display_name})});
+    $('#authMsg').textContent=r.ok?'Đăng ký thành công! Hãy đăng nhập.':await r.text();
+  }catch(e){ $('#authMsg').textContent='Đăng ký thất bại'; }
+};
+$('#logoutBtn').onclick=()=>{ clearAuth(); setState(emptyState()); refresh(); };
+
+$('#checkInBtn').onclick=async()=>{ const s=getState(); if(s.status!=='offline'){return;}
+  const startedAt=now(); setState({status:'working',startedAt,breakStartedAt:null,accBreakMs:0});
+  try{await api('/attendance/check-in','POST',{startedAt});}catch(e){}
+  refresh(); };
+$('#breakBtn').onclick=async()=>{ const s=getState();
+  if(s.status==='working'){ s.status='break'; s.breakStartedAt=now(); setState(s);
+    try{await api('/attendance/break/start','POST',{at:s.breakStartedAt});}catch(e){}
+  } else if(s.status==='break'){ const n=now(); if(s.breakStartedAt) s.accBreakMs+=(n-s.breakStartedAt);
+    setState({...s,status:'working',breakStartedAt:null});
+    try{await api('/attendance/break/end','POST',{at:n});}catch(e){} }
+  refresh(); };
+$('#checkOutBtn').onclick=async()=>{ const s=getState(); if(s.status==='offline'||!s.startedAt)return;
+  const end=now(); let acc=s.accBreakMs; if(s.status==='break'&&s.breakStartedAt)acc+=(end-s.breakStartedAt);
+  const elapsed=end-s.startedAt; const workMs=Math.max(0,elapsed-acc);
+  try{await api('/attendance/check-out','POST',{endedAt:end});}catch(e){}
+  setState(emptyState()); refresh(); };
+
+// Heartbeat & refresh
+setInterval(()=>{ const auth=getAuth(); if(auth?.token){ api('/presence/beat','POST',getState()).catch(()=>{});} },30000);
+setInterval(loadPublic,15000);
+refresh();
+</script>
+</body>
+</html>
